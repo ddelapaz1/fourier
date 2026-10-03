@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sèrie de Fourier · Reconstrucció per harmònics</title>
+<style>
+:root{
+  --text:#2C2C2B; --muted:#7D7A75; --bg:#FFFFFF; --soft:#F9F8F7; --surf2:#F0EFED; --border:#E6E5E3;
+  --accent:#2783DE; --accent-soft:#E5F2FC; --orange:#D5803B; --orange-soft:#FBEBDE; --green:#46A171;
+  --orig:#9A9893; --grid:#EEEDEB; --axis:#BDBBB7;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --text:#FFFFFF; --muted:rgba(255,255,255,.65); --bg:#191919; --soft:#202020; --surf2:#2A2A29; --border:rgba(255,255,255,.18);
+    --accent:#5E9FE8; --accent-soft:rgba(94,159,232,.12); --orange:#DE9255; --orange-soft:rgba(222,146,85,.12); --green:#72BC8F;
+    --orig:#8E8C88; --grid:rgba(255,255,255,.07); --axis:rgba(255,255,255,.3);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:32px 32px 48px}
+header h1{font-size:30px;line-height:1.2;margin:0 0 4px;letter-spacing:-.01em}
+header p{margin:0;color:var(--muted)}
+.controls{margin-top:24px;display:grid;grid-template-columns:auto 1fr auto;gap:16px 24px;align-items:center;
+  background:var(--soft);border:1px solid var(--border);border-radius:12px;padding:16px 20px}
+.field{display:flex;flex-direction:column;gap:6px}
+.label{font-size:14px;color:var(--muted);font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg)}
+.seg button{border:0;background:transparent;color:var(--text);font:inherit;font-size:15px;padding:8px 14px;cursor:pointer;border-right:1px solid var(--border)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff;font-weight:600}
+.seg button:focus-visible,.btn:focus-visible,input[type=range]:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.sliderRow{display:flex;align-items:center;gap:14px}
+input[type=range]{flex:1;accent-color:var(--accent);height:28px;min-width:120px}
+.nval{min-width:44px;text-align:center;font-size:22px;font-weight:700;color:var(--accent);
+  background:var(--accent-soft);border-radius:8px;padding:2px 8px;font-variant-numeric:tabular-nums}
+.ticks{position:relative;height:18px;font-size:12px;color:var(--muted);margin-right:58px}.ticks span{position:absolute;transform:translateX(-50%)}
+.btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.btn{font:inherit;font-size:15px;font-weight:600;border-radius:8px;padding:9px 14px;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text);white-space:nowrap}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn[hidden]{display:none}
+.freqs{margin-top:16px;padding:12px 16px;border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0}
+.freqs .main{font-size:18px;font-weight:600}
+.freqs .formula{font-family:Menlo,Consolas,monospace;font-size:14px;color:var(--muted);margin-top:4px;overflow-wrap:anywhere}
+.audio{margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:12px 24px;flex-wrap:wrap;
+  border:1px solid var(--border);border-radius:12px;padding:12px 16px;background:var(--soft)}
+.audioTitle{display:flex;flex-direction:column;font-size:15px}.audioTitle span{font-size:14px;color:var(--muted)}
+.audioCtrls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.btn.sound[aria-pressed="true"]{background:var(--orange);border-color:var(--orange);color:#fff}
+.mini{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+.mini select{font:inherit;font-size:14px;padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)}
+.mini input[type=range]{width:100px;min-width:80px;flex:none}
+.card{margin-top:24px;border:1px solid var(--border);border-radius:12px;padding:16px 16px 8px;background:var(--bg)}
+.card h2{font-size:18px;margin:0 0 2px}
+.card .sub{font-size:14px;color:var(--muted);margin:0 0 8px}
+.cardHead{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:22px;height:0;border-top:2px solid;vertical-align:middle;margin-right:6px}
+.stat{font-size:14px;color:var(--muted)} .stat b{color:var(--text);font-variant-numeric:tabular-nums}
+canvas{display:block;width:100%}
+#cMain{height:360px} #cComp{height:300px} #cSpec{height:240px}
+.grid2{display:grid;grid-template-columns:1.25fr 1fr;gap:24px}
+.grid2 .card{margin-top:24px}
+.notes{margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.notes .card{margin-top:0;padding:16px 20px}
+.notes ul{margin:8px 0 8px;padding-left:20px}
+.notes li{margin:6px 0}
+.notes li.hl{color:var(--text);font-weight:600}
+.notes li:not(.hl){color:var(--muted)}
+.now{background:var(--orange-soft);border-color:transparent}
+.now p{margin:8px 0}
+.seed{font-size:13px;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums}
+@media (max-width:900px){
+  .controls{grid-template-columns:1fr}
+  .btns{justify-content:flex-start}
+  .grid2,.notes{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+  .wrap{padding:20px 16px 32px}
+  header h1{font-size:24px}
+  .seg button{padding:8px 10px;font-size:14px}
+  #cMain{height:280px} #cComp{height:260px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Sèrie de Fourier: reconstrucció d’un senyal</h1>
+    <p>Suma components sinusoidals una a una i observa com apareix el senyal original.</p>
+  </header>
+
+  <section class="controls" aria-label="Controls">
+    <div class="field">
+      <span class="label" id="lblSig">Tipus de senyal</span>
+      <div class="seg" role="group" aria-labelledby="lblSig">
+        <button type="button" data-sig="square" aria-pressed="true">Ona quadrada</button>
+        <button type="button" data-sig="triangle" aria-pressed="false">Ona triangular</button>
+        <button type="button" data-sig="random" aria-pressed="false">Fragment aleatori</button>
+      </div>
+    </div>
+    <div class="field">
+      <label class="label" for="nSlider">Nombre de components (N)</label>
+      <div class="sliderRow">
+        <input id="nSlider" type="range" min="1" max="20" step="1" value="1" aria-describedby="freqMain">
+        <output id="nVal" class="nval" for="nSlider">1</output>
+      </div>
+      <div class="ticks" aria-hidden="true"><span style="left:calc(10px + (100% - 20px)*0.0000)">1</span><span style="left:calc(10px + (100% - 20px)*0.2105)">5</span><span style="left:calc(10px + (100% - 20px)*0.4737)">10</span><span style="left:calc(10px + (100% - 20px)*0.7368)">15</span><span style="left:calc(10px + (100% - 20px)*1.0000)">20</span></div>
+    </div>
+    <div class="btns">
+      <button type="button" class="btn primary" id="animBtn">▶ Animar reconstrucció</button>
+      <button type="button" class="btn" id="newBtn" hidden>Nou fragment</button>
+    </div>
+  </section>
+
+  <div class="freqs" aria-live="polite">
+    <div class="main" id="freqMain"></div>
+    <div class="formula" id="formula"></div>
+  </div>
+
+  <section class="audio" aria-label="So">
+    <div class="audioTitle"><b>🔊 Escolta el senyal</b><span>El so de la reconstrucció s’actualitza en moure el slider.</span></div>
+    <div class="audioCtrls">
+      <button type="button" class="btn sound" id="playOrig" aria-pressed="false">▶ Original</button>
+      <button type="button" class="btn sound" id="playRec" aria-pressed="false">▶ Reconstrucció (N = <span id="recN">1</span>)</button>
+      <label class="mini">Freqüència f
+        <select id="fSel"><option value="110">110 Hz</option><option value="220" selected>220 Hz</option><option value="440">440 Hz</option><option value="880">880 Hz</option></select>
+      </label>
+      <label class="mini">Volum <input type="range" id="vol" min="0" max="1" step="0.01" value="0.5"></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="cardHead">
+      <div>
+        <h2>Senyal original i reconstrucció</h2>
+        <p class="sub">Tres períodes complets (T = 1/f)</p>
+      </div>
+      <div>
+        <div class="legend">
+          <span><i style="border-color:var(--orig);border-top-width:1.5px"></i>Senyal original</span>
+          <span><i style="border-color:var(--accent);border-top-width:3px"></i>Reconstrucció (N = <span id="legN">1</span>)</span>
+        </div>
+        <div class="stat" style="text-align:right">Error eficaç (RMS): <b id="rmsErr">–</b></div>
+      </div>
+    </div>
+    <canvas id="cMain" role="img" aria-label="Gràfic del senyal original i de la reconstrucció"></canvas>
+    <div class="seed" id="seedInfo" hidden></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <h2>Components individuals</h2>
+      <p class="sub">Cada sinusoide seleccionada (línies fines) i la seva suma (línia gruixuda)</p>
+      <canvas id="cComp" role="img" aria-label="Components sinusoidals individuals i la seva suma"></canvas>
+      <div class="legend" id="compLegend" style="margin:6px 0 8px"></div>
+    </section>
+    <section class="card">
+      <h2>Espectre d’amplituds</h2>
+      <p class="sub">Amplitud de cada freqüència · en color, les components que s’estan sumant</p>
+      <canvas id="cSpec" role="img" aria-label="Espectre de barres de les amplituds"></canvas>
+    </section>
+  </div>
+
+  <div class="notes">
+    <section class="card now">
+      <h2>Què estem veient ara?</h2>
+      <div id="nowText"></div>
+    </section>
+    <section class="card">
+      <h2>Idees clau</h2>
+      <ul id="keyIdeas">
+        <li data-k="fund">Amb només la <b>fonamental</b> (N = 1), la reconstrucció és una sinusoide pura de freqüència f.</li>
+        <li data-k="detail">Cada harmònic afegit aporta detalls més fins: la suma s’acosta progressivament al senyal original.</li>
+        <li data-k="odd">Les ones quadrada i triangular simètriques només contenen <b>harmònics senars</b> (3f, 5f, 7f…).</li>
+        <li data-k="decay">A l’ona triangular les amplituds cauen com 1/n², molt més ràpid que a la quadrada (1/n): per això convergeix abans.</li>
+        <li data-k="gibbs">Prop dels salts de l’ona quadrada apareixen oscil·lacions (<b>fenomen de Gibbs</b>): se n’estrenyen, però el sobrepic (≈ 9 % del salt) no desapareix.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const A = 1;            // amplitud
+const NMAX = 20;
+const SPEC_MAX = 39;    // harmònic màxim calculat (39f = 20a component senar)
+const SPEC_RND = 30;    // harmònic màxim mostrat a l'espectre del fragment aleatori
+const PERIODS = 3;
+const M = 1024;         // mostres per període (fragment aleatori)
+const PAL = ['#5E9FE8','#EAC26B','#72BC8F','#BF8EDA','#DE9255','#DF84A8','#4FB9C9','#E97366','#8C9EB0','#B5A35E'];
+const TWO_PI = 2*Math.PI;
+
+let state = { sig:'square', N:1, seed: 20261003 };
+let rnd = null; // { samples, a0, a[], b[] }
+let scaleCache = {};
+
+// ---------- utilitats ----------
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const frac = x => x - Math.floor(x);
+const fmt = (x,d=3) => x.toLocaleString('ca-ES',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fLabel = n => n===1 ? 'f' : n+'f';
+
+// ---------- fragment aleatori ----------
+function makeRandom(seed){
+  const r = mulberry32(seed);
+  const K = 14;                       // punts de control dins el període
+  const pts = [];
+  let v = (r()*2-1)*0.6;
+  for(let i=0;i<K;i++){ v += (r()*2-1)*0.75; v = Math.max(-1.3,Math.min(1.3,v)); pts.push(v); }
+  // algun salt brusc per fer-lo irregular
+  const jumpAt = 3 + Math.floor(r()*(K-6));
+  const jump = (r()<0.5?-1:1)*(0.6+r()*0.6);
+  const s = new Float64Array(M);
+  const cr = (p0,p1,p2,p3,t)=>0.5*((2*p1)+(-p0+p2)*t+(2*p0-5*p1+4*p2-p3)*t*t+(-p0+3*p1-3*p2+p3)*t*t*t);
+  const P = i => pts[Math.max(0,Math.min(K-1,i))];
+  // petit soroll suau d'alta freqüència
+  const ph = [r()*TWO_PI, r()*TWO_PI], am=[0.06+r()*0.06, 0.03+r()*0.04], fr=[23+Math.floor(r()*8), 41+Math.floor(r()*10)];
+  for(let m=0;m<M;m++){
+    const u = m/M*(K-1); const i=Math.floor(u), t=u-i;
+    let y = cr(P(i-1),P(i),P(i+1),P(i+2),t);
+    if(u>=jumpAt) y += jump;
+    y += am[0]*Math.sin(fr[0]*TWO_PI*m/M+ph[0]) + am[1]*Math.sin(fr[1]*TWO_PI*m/M+ph[1]);
+    s[m]=y;
+  }
+  // normalitza: valor mitjà lleugerament desplaçat (no nul) i pic ≈ 1.
+  let mean=0; for(const y of s) mean+=y; mean/=M;
+  let mx=0; for(const y of s) mx=Math.max(mx,Math.abs(y-mean));
+  const offset = (r()*2-1)*0.35;
+  for(let m=0;m<M;m++) s[m] = (s[m]-mean)/mx + offset;
+  // coeficients de Fourier (DFT directa sobre mostres uniformes d'un període)
+  const a=new Float64Array(SPEC_MAX+1), b=new Float64Array(SPEC_MAX+1);
+  let a0=0; for(const y of s) a0+=y; a0/=M;
+  for(let n=1;n<=SPEC_MAX;n++){
+    let sc=0, ss=0;
+    for(let m=0;m<M;m++){ const th=TWO_PI*n*m/M; sc+=s[m]*Math.cos(th); ss+=s[m]*Math.sin(th); }
+    a[n]=2*sc/M; b[n]=2*ss/M;
+  }
+  return {samples:s,a0,a,b};
+}
+function rndOriginal(t){ // repetició periòdica, interpolació lineal entre mostres
+  const u = frac(t)*M, i=Math.floor(u)%M, w=u-Math.floor(u);
+  const s=rnd.samples; return s[i]*(1-w)+s[(i+1)%M]*w;
+}
+
+// ---------- model de senyal ----------
+// Retorna la llista de components: {n, amp, phase (rad), fn(t)} amb sin(n·2πft + φ)
+function harmonicsList(sig){
+  const L=[];
+  if(sig==='square'){
+    for(let k=0;k<NMAX;k++){const n=2*k+1; L.push({n, amp:4*A/(Math.PI*n), sign:1});}
+  } else if(sig==='triangle'){
+    for(let k=0;k<NMAX;k++){const n=2*k+1; L.push({n, amp:8*A/(Math.PI*Math.PI*n*n), sign:(k%2?-1:1)});}
+  } else {
+    for(let n=1;n<=NMAX;n++) L.push({n, a:rnd.a[n], b:rnd.b[n], amp:Math.hypot(rnd.a[n],rnd.b[n])});
+  }
+  return L;
+}
+function compValue(c,t){
+  const th=TWO_PI*c.n*t;
+  if(c.sign!==undefined) return c.sign*c.amp*Math.sin(th);
+  return c.a*Math.cos(th)+c.b*Math.sin(th);
+}
+function dc(sig){ return sig==='random' ? rnd.a0 : 0; }
+function original(sig,t){
+  if(sig==='square'){ const x=frac(t); return x<0.5?A:-A; }               // signe de sin(2πft)
+  if(sig==='triangle'){ return A*(2/Math.PI)*Math.asin(Math.sin(TWO_PI*t)); } // mateixa fase que T_N
+  return rndOriginal(t);
+}
+function recon(sig,comps,N,t){ let y=dc(sig); for(let i=0;i<N;i++) y+=compValue(comps[i],t); return y; }
+
+function stableRange(sig){
+  const key = sig==='random' ? 'r'+state.seed : sig;
+  if(scaleCache[key]) return scaleCache[key];
+  const comps=harmonicsList(sig); let lo=Infinity, hi=-Infinity;
+  for(let j=0;j<=2000;j++){ const t=j/2000;
+    const o=original(sig,t); lo=Math.min(lo,o); hi=Math.max(hi,o);
+    for(let N=1;N<=NMAX;N++){ const y=recon(sig,comps,N,t); lo=Math.min(lo,y); hi=Math.max(hi,y); }
+  }
+  const pad=(hi-lo)*0.08; return scaleCache[key]=[lo-pad,hi+pad];
+}
+
+// ---------- canvas ----------
+function setup(cv){
+  const dpr=window.devicePixelRatio||1, r=cv.getBoundingClientRect();
+  const w=Math.max(1,Math.round(r.width)), h=Math.max(1,Math.round(r.height));
+  if(cv.width!==w*dpr||cv.height!==h*dpr){cv.width=w*dpr;cv.height=h*dpr;}
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,w,h);
+  return {ctx,w,h};
+}
+function niceStep(range,target){const raw=range/target,p=Math.pow(10,Math.floor(Math.log10(raw)));const m=raw/p;return (m<1.5?1:m<3?2:m<7?5:10)*p;}
+
+function drawTimeAxes(ctx,w,h,yr,opts){
+  const C={grid:css('--grid'),axis:css('--axis'),muted:css('--muted'),text:css('--text')};
+  const pad={l:52,r:12,t:10,b:opts.xlabel?44:28};
+  const pw=w-pad.l-pad.r, ph=h-pad.t-pad.b;
+  const X=t=>pad.l+t/PERIODS*pw, Y=v=>pad.t+(yr[1]-v)/(yr[1]-yr[0])*ph;
+  ctx.font='12px -apple-system,Segoe UI,Roboto,Arial,sans-serif'; ctx.lineWidth=1;
+  // graella horitzontal
+  const st=niceStep(yr[1]-yr[0],5);
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  for(let v=Math.ceil(yr[0]/st)*st; v<=yr[1]+1e-9; v+=st){
+    const y=Math.round(Y(v))+.5; ctx.strokeStyle=Math.abs(v)<1e-9?C.axis:C.grid; ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+pw,y); ctx.stroke();
+    ctx.fillStyle=C.muted; ctx.fillText(fmt(v,Math.abs(st)<1?1:0),pad.l-8,y);
+  }
+  // graella vertical (cada T/2), marques en T
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  for(let k=0;k<=PERIODS*2;k++){
+    const t=k/2, x=Math.round(X(t))+.5; ctx.strokeStyle=k%2===0?C.axis:C.grid; ctx.globalAlpha=k%2===0?0.6:1;
+    ctx.beginPath(); ctx.moveTo(x,pad.t); ctx.lineTo(x,pad.t+ph); ctx.stroke(); ctx.globalAlpha=1;
+    ctx.fillStyle=C.muted; const lab = k===0?'0':(k%2===0?(k/2===1?'T':(k/2)+'T'):(k===1?'T/2':k+'T/2'));
+    ctx.fillText(lab,x,pad.t+ph+6);
+  }
+  ctx.strokeStyle=C.axis; ctx.strokeRect(pad.l+.5,pad.t+.5,pw-1,ph-1);
+  if(opts.xlabel){ ctx.fillStyle=C.text; ctx.font='600 13px -apple-system,Segoe UI,Roboto,Arial,sans-serif'; ctx.fillText('Temps',pad.l+pw/2,pad.t+ph+24); }
+  ctx.save(); ctx.translate(14,pad.t+ph/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle=C.text; ctx.font='600 13px -apple-system,Segoe UI,Roboto,Arial,sans-serif'; ctx.fillText('Amplitud',0,0); ctx.restore();
+  return {X,Y,pad,pw,ph};
+}
+function plotFn(ctx,ax,f,color,lw,dash){
+  const n=Math.max(600,Math.ceil(ax.pw*3)); ctx.save(); ctx.beginPath();
+  ctx.rect(ax.pad.l,ax.pad.t,ax.pw,ax.ph); ctx.clip(); ctx.beginPath();
+  for(let i=0;i<=n;i++){const t=i/n*PERIODS, x=ax.X(t), y=ax.Y(f(t)); i?ctx.lineTo(x,y):ctx.moveTo(x,y);}
+  ctx.strokeStyle=color; ctx.lineWidth=lw; ctx.lineJoin='round'; if(dash) ctx.setLineDash(dash); ctx.stroke(); ctx.restore();
+}
+
+function drawMain(comps){
+  const cv=document.getElementById('cMain'); const {ctx,w,h}=setup(cv);
+  const yr=stableRange(state.sig); const ax=drawTimeAxes(ctx,w,h,yr,{xlabel:true});
+  const sig=state.sig, N=state.N;
+  // original: discontinuïtats verticals dibuixades per mostreig dens
+  plotFn(ctx,ax,t=>original(sig,t),css('--orig'),1.5);
+  plotFn(ctx,ax,t=>recon(sig,comps,N,t),css('--accent'),2.75);
+}
+function drawComps(comps){
+  const cv=document.getElementById('cComp'); const {ctx,w,h}=setup(cv);
+  const sig=state.sig,N=state.N;
+  const yr=stableRange(sig); const ax=drawTimeAxes(ctx,w,h,yr,{xlabel:true});
+  if(sig==='random'){ const d=dc(sig); plotFn(ctx,ax,()=>d,css('--muted'),1.25,[5,4]); }
+  for(let i=0;i<N;i++){ const c=comps[i]; plotFn(ctx,ax,t=>compValue(c,t),PAL[i%PAL.length],1.5); }
+  plotFn(ctx,ax,t=>recon(sig,comps,N,t),css('--text'),2.75);
+  // llegenda
+  let html = comps.slice(0,N).map((c,i)=>`<span><i style="border-color:${PAL[i%PAL.length]}"></i>${fLabel(c.n)}</span>`).join('');
+  if(sig==='random') html = `<span><i style="border-color:var(--muted);border-top-style:dashed"></i>Valor mitjà</span>`+html;
+  html += `<span><i style="border-color:var(--text);border-top-width:3px"></i>Suma</span>`;
+  document.getElementById('compLegend').innerHTML=html;
+}
+function drawSpec(){
+  const cv=document.getElementById('cSpec'); const {ctx,w,h}=setup(cv);
+  const sig=state.sig, N=state.N;
+  const C={grid:css('--grid'),axis:css('--axis'),muted:css('--muted'),text:css('--text'),acc:css('--accent'),off:css('--surf2'),border:css('--border')};
+  // amplituds per n = 0..SPEC_MAX
+  const amps=[]; const sel=new Set();
+  const startN = sig==='random'?0:1;
+  const nTop = sig==='random'?SPEC_RND:SPEC_MAX;
+  for(let n=startN;n<=nTop;n++){
+    let a=0;
+    if(sig==='square') a = n%2 ? 4*A/(Math.PI*n) : 0;
+    else if(sig==='triangle') a = n%2 ? 8*A/(Math.PI*Math.PI*n*n) : 0;
+    else a = n===0 ? Math.abs(rnd.a0) : Math.hypot(rnd.a[n],rnd.b[n]);
+    amps.push({n,a});
+  }
+  if(sig==='random'){ sel.add(0); for(let n=1;n<=N;n++) sel.add(n); }
+  else for(let k=0;k<N;k++) sel.add(2*k+1);
+  const pad={l:44,r:8,t:18,b:40}, pw=w-pad.l-pad.r, ph=h-pad.t-pad.b;
+  const amax = sig==='random' ? Math.max(...amps.map(o=>o.a))*1.15 : (sig==='square'?1.4:0.95);
+  const Y=v=>pad.t+(1-v/amax)*ph;
+  ctx.font='11px -apple-system,Segoe UI,Roboto,Arial,sans-serif'; ctx.lineWidth=1;
+  const st=niceStep(amax,4); ctx.textAlign='right'; ctx.textBaseline='middle';
+  for(let v=0;v<=amax+1e-9;v+=st){const y=Math.round(Y(v))+.5;ctx.strokeStyle=v===0?C.axis:C.grid;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+pw,y);ctx.stroke();ctx.fillStyle=C.muted;ctx.fillText(fmt(v,st<1?(st<0.1?2:1):0),pad.l-6,y);}
+  const nb=amps.length, slot=pw/nb, bw=Math.max(3,slot*0.62);
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  const minGap=30; const st2=Math.max(1,Math.ceil(minGap/slot));
+  amps.forEach((o,i)=>{
+    const x=pad.l+slot*i+slot/2, on=sel.has(o.n);
+    if(o.a>1e-9){ ctx.fillStyle=on?C.acc:C.off; ctx.strokeStyle=on?C.acc:C.axis;
+      const y=Y(o.a); ctx.fillRect(x-bw/2,y,bw,Y(0)-y); if(!on){ctx.strokeRect(x-bw/2+.5,y+.5,bw-1,Y(0)-y-1);} }
+    const showLab = sig==='random' ? (o.n%st2===0 || o.n===1&&st2<=2) : (o.n%2===1 && ((o.n-1)/2)%Math.ceil(st2/2)===0);
+    if(showLab){ ctx.fillStyle=on?C.text:C.muted; ctx.font=(on?'600 ':'')+'11px -apple-system,Segoe UI,Roboto,Arial,sans-serif';
+      ctx.fillText(o.n===0?'0':fLabel(o.n),x,pad.t+ph+5); }
+  });
+  ctx.fillStyle=C.text; ctx.font='600 12px -apple-system,Segoe UI,Roboto,Arial,sans-serif';
+  ctx.fillText('Freqüència',pad.l+pw/2,pad.t+ph+22);
+  ctx.save(); ctx.translate(11,pad.t+ph/2); ctx.rotate(-Math.PI/2); ctx.textBaseline='middle'; ctx.fillText('Amplitud',0,0); ctx.restore();
+}
+
+// ---------- textos ----------
+function listFreqs(arr){ if(arr.length===1) return arr[0]; return arr.slice(0,-1).join(', ')+' i '+arr[arr.length-1]; }
+function updateTexts(comps){
+  const sig=state.sig,N=state.N; const fr=comps.slice(0,N).map(c=>fLabel(c.n));
+  const comp = N===1?'1 component':N+' components';
+  const desc = N===1 ? 'només la fonamental' : `fonamental + ${N-1} ${N-1===1?'harmònic':'harmònics'}`;
+  let main = `${comp}: ${desc} — ${listFreqs(fr)}`;
+  if(sig==='random') main += ' (+ valor mitjà)';
+  document.getElementById('freqMain').textContent=main;
+  // fórmula
+  let fm='';
+  const term=(n,den)=> n===1?'sin(ωt)':`sin(${n}ωt)${den}`;
+  if(sig==='square'){
+    let ts=comps.slice(0,N).map(c=>term(c.n,c.n===1?'':'/'+c.n)).map((x,i)=>(i?' + ':'')+x);
+    if(N>7) ts=[...ts.slice(0,4),' + …',ts[N-1]];
+    fm = `S${sub(N)}(t) = (4A/π)·[ ` + ts.join('') + ' ]';
+  } else if(sig==='triangle'){
+    let ts=comps.slice(0,N).map((c,i)=>(i===0?'':(c.sign<0?' − ':' + '))+term(c.n,c.n===1?'':'/'+(c.n*c.n)));
+    if(N>7) ts=[...ts.slice(0,4),' + …',ts[N-1]];
+    fm = `T${sub(N)}(t) = (8A/π²)·[ ` + ts.join('') + ' ]';
+  } else {
+    fm = `x${sub(N)}(t) = a₀ + Σ[n=1…${N}] Cₙ·sin(n·ωt + φₙ)   ·   a₀ = ${fmt(rnd.a0,3)}`;
+  }
+  document.getElementById('formula').textContent = fm + '   (ω = 2πf)';
+  document.getElementById('nVal').textContent=N;
+  document.getElementById('legN').textContent=N;
+  // error RMS
+  let e=0; const K=4000; for(let j=0;j<K;j++){const t=(j+.5)/K; const d=original(sig,t)-recon(sig,comps,N,t); e+=d*d;}
+  document.getElementById('rmsErr').textContent=fmt(Math.sqrt(e/K),3);
+  // idees clau destacades
+  const hl = new Set(['detail']); if(N===1) hl.add('fund');
+  if(sig!=='random') hl.add('odd'); if(sig==='triangle') hl.add('decay'); if(sig==='square'&&N>1) hl.add('gibbs');
+  document.querySelectorAll('#keyIdeas li').forEach(li=>li.classList.toggle('hl',hl.has(li.dataset.k)));
+  // explicació contextual
+  let t='';
+  const last=comps[N-1];
+  if(N===1){
+    t=`<p>Només hi ha la <b>fonamental</b> (f): la reconstrucció és una sinusoide pura amb el mateix període que el senyal original.</p>`;
+    if(sig==='square') t+=`<p>La seva amplitud és 4A/π ≈ ${fmt(4/Math.PI,2)}·A, una mica més gran que A.</p>`;
+    if(sig==='triangle') t+=`<p>Ja s’assembla molt al triangle: la seva amplitud és 8A/π² ≈ ${fmt(8/Math.PI**2,2)}·A.</p>`;
+    if(sig==='random') t+=`<p>A més, es manté el terme constant a₀ = ${fmt(rnd.a0,2)} (valor mitjà del fragment).</p>`;
+  } else {
+    t=`<p>L’últim component afegit és <b>${fLabel(last.n)}</b>, amb amplitud ${fmt(last.amp,3)}${sig!=='random'?` (${fmt(last.amp/comps[0].amp*100,1)} % de la fonamental)`:''}.</p>`;
+    if(sig==='square') t+=`<p>Els flancs es fan més verticals. Fixa’t en els <b>sobrepics</b> al costat de cada salt: és el fenomen de Gibbs, i no desapareix encara que s’afegeixin més harmònics.</p>`;
+    if(sig==='triangle') t+=`<p>Com que les amplituds cauen amb 1/n², els harmònics nous aporten molt poc: el que milloren és, sobretot, la punta dels vèrtexs.</p>`;
+    if(sig==='random') t+=`<p>Cada freqüència nova (incloses les parells) recupera detalls més ràpids de la corba. El salt al final de cada període també provoca oscil·lacions de tipus Gibbs.</p>`;
+  }
+  document.getElementById('nowText').innerHTML=t;
+}
+function sub(n){ const s='₀₁₂₃₄₅₆₇₈₉'; return String(n).split('').map(d=>s[+d]).join(''); }
+
+// ---------- àudio (Web Audio API, ones periòdiques exactes) ----------
+const audio={ctx:null,osc:null,gain:null,mode:null};
+function rndCoeffs(nMax){ // coeficients addicionals del fragment per a l'original (fins a M/2-1)
+  if(rnd.full && rnd.full.n>=nMax) return rnd.full;
+  const a=new Float64Array(nMax+1), b=new Float64Array(nMax+1), s=rnd.samples;
+  for(let n=1;n<=nMax;n++){ let sc=0,ss=0; for(let m=0;m<M;m++){const th=TWO_PI*n*m/M; sc+=s[m]*Math.cos(th); ss+=s[m]*Math.sin(th);} a[n]=2*sc/M; b[n]=2*ss/M; }
+  return rnd.full={n:nMax,a,b};
+}
+function buildWave(mode){
+  const f=+document.getElementById('fSel').value, sr=audio.ctx.sampleRate;
+  const nyq=Math.floor(Math.min(sr/2*0.9,16000)/f);  // limitat en banda: sense aliasing
+  const sig=state.sig;
+  let nMax = mode==='orig' ? nyq : (sig==='random'? state.N : 2*state.N-1);
+  if(sig==='random') nMax=Math.min(nMax, M/2-1);
+  nMax=Math.max(1,Math.min(nMax,nyq));
+  const re=new Float32Array(nMax+1), im=new Float32Array(nMax+1);
+  if(sig==='square'){ for(let n=1;n<=nMax;n+=2) im[n]=4*A/(Math.PI*n); }
+  else if(sig==='triangle'){ for(let n=1,k=0;n<=nMax;n+=2,k++) im[n]=(k%2?-1:1)*8*A/(Math.PI*Math.PI*n*n); }
+  else { const c=mode==='orig'?rndCoeffs(nMax):rnd; for(let n=1;n<=nMax;n++){ re[n]=c.a[n]; im[n]=c.b[n]; } }
+  return audio.ctx.createPeriodicWave(re,im,{disableNormalization:true});
+}
+function volume(){ return 0.35*(+document.getElementById('vol').value); }
+function updateSound(){
+  if(!audio.osc) return;
+  audio.osc.frequency.setValueAtTime(+document.getElementById('fSel').value,audio.ctx.currentTime);
+  audio.osc.setPeriodicWave(buildWave(audio.mode));
+}
+function startSound(mode){
+  if(!audio.ctx) audio.ctx=new (window.AudioContext||window.webkitAudioContext)();
+  audio.ctx.resume();
+  if(audio.osc && audio.mode===mode){ stopSound(); return; }
+  stopSound(true);
+  const t=audio.ctx.currentTime;
+  const g=audio.ctx.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(volume(),t+0.05);
+  const o=audio.ctx.createOscillator(); o.frequency.value=+document.getElementById('fSel').value;
+  audio.mode=mode; o.setPeriodicWave(buildWave(mode)); o.connect(g).connect(audio.ctx.destination); o.start();
+  audio.osc=o; audio.gain=g; syncSoundBtns();
+}
+function stopSound(silent){
+  if(audio.osc){ const t=audio.ctx.currentTime, o=audio.osc, g=audio.gain;
+    g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value,t); g.gain.linearRampToValueAtTime(0,t+0.05); o.stop(t+0.06); }
+  audio.osc=null; audio.gain=null; if(!silent){ audio.mode=null; syncSoundBtns(); }
+}
+function syncSoundBtns(){
+  const po=document.getElementById('playOrig'), pr=document.getElementById('playRec');
+  const on = m => !!audio.osc && audio.mode===m;
+  po.setAttribute('aria-pressed',on('orig')); pr.setAttribute('aria-pressed',on('rec'));
+  po.firstChild.textContent = on('orig')?'■ Original':'▶ Original';
+  pr.firstChild.textContent = on('rec')?'■ Reconstrucció (N = ':'▶ Reconstrucció (N = ';
+}
+document.getElementById('playOrig').addEventListener('click',()=>startSound('orig'));
+document.getElementById('playRec').addEventListener('click',()=>startSound('rec'));
+document.getElementById('fSel').addEventListener('change',updateSound);
+document.getElementById('vol').addEventListener('input',()=>{ if(audio.gain) audio.gain.gain.setTargetAtTime(volume(),audio.ctx.currentTime,0.02); });
+
+// ---------- render ----------
+let raf=0;
+let lastSoundKey='';
+function render(){ cancelAnimationFrame(raf); raf=requestAnimationFrame(()=>{
+  const comps=harmonicsList(state.sig);
+  updateTexts(comps); drawMain(comps); drawComps(comps); drawSpec();
+  document.getElementById('recN').textContent=state.N; updateSound();
+});}
+
+// ---------- controls ----------
+const slider=document.getElementById('nSlider');
+const animBtn=document.getElementById('animBtn');
+const newBtn=document.getElementById('newBtn');
+const seedInfo=document.getElementById('seedInfo');
+slider.addEventListener('input',()=>{ state.N=+slider.value; if(animTimer && !animSetting) stopAnim(); render(); });
+document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{
+  state.sig=b.dataset.sig;
+  document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));
+  newBtn.hidden = state.sig!=='random'; seedInfo.hidden = state.sig!=='random';
+  render();
+}));
+newBtn.addEventListener('click',()=>{ state.seed=(Math.random()*1e9)>>>0; rnd=makeRandom(state.seed); seedInfo.textContent='Llavor del fragment: '+state.seed; render(); });
+
+let animTimer=null, animSetting=false;
+function setN(n){ animSetting=true; slider.value=n; state.N=n; animSetting=false; render(); }
+function stopAnim(label){ clearInterval(animTimer); animTimer=null; animBtn.textContent = label || (state.N<NMAX?'▶ Continuar animació':'▶ Animar reconstrucció'); }
+animBtn.addEventListener('click',()=>{
+  if(animTimer){ stopAnim(); return; }
+  if(state.N>=NMAX) setN(1);
+  animBtn.textContent='Ⅱ Pausar animació';
+  animTimer=setInterval(()=>{
+    if(state.N>=NMAX){ stopAnim('▶ Animar reconstrucció'); return; }
+    setN(state.N+1);
+    if(state.N>=NMAX) stopAnim('▶ Animar reconstrucció');
+  },650);
+});
+
+new ResizeObserver(render).observe(document.querySelector('.wrap'));
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',render);
+
+rnd=makeRandom(state.seed); seedInfo.textContent='Llavor del fragment: '+state.seed;
+const qp=new URLSearchParams(location.search);
+if(qp.get('sig')) document.querySelector(`.seg button[data-sig="${qp.get('sig')}"]`)?.click();
+if(qp.get('n')){ slider.value=Math.min(20,Math.max(1,+qp.get('n'))); state.N=+slider.value; }
+render();
+})();
+</script>
+</body>
+</html>
